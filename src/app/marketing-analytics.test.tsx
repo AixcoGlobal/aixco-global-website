@@ -25,7 +25,7 @@ vi.mock("./web-vitals", () => ({
   WebVitals: () => <div data-testid="web-vitals" />,
 }));
 
-import { analyticsCookieDomains, MarketingAnalytics } from "./marketing-analytics";
+import { analyticsCookieDomains, googleAnalyticsMeasurementId, MarketingAnalytics } from "./marketing-analytics";
 
 describe("route-aware marketing analytics", () => {
   beforeEach(() => {
@@ -37,6 +37,10 @@ describe("route-aware marketing analytics", () => {
     delete (window as AnalyticsWindow).__aixcoGoogleConsentDefaulted;
   });
 
+  it("exports the production GA4 measurement id", () => {
+    expect(googleAnalyticsMeasurementId).toBe("G-21RTG6TMKH");
+  });
+
   it("includes the parent domain when clearing analytics cookies from a subdomain", () => {
     expect(analyticsCookieDomains("www.aixco.global")).toEqual([
       "www.aixco.global",
@@ -46,14 +50,20 @@ describe("route-aware marketing analytics", () => {
     expect(analyticsCookieDomains("127.0.0.1")).toEqual(["127.0.0.1", ".127.0.0.1"]);
   });
 
-  it("holds GTM until analytics consent is granted on public routes", async () => {
-    const { getByTestId } = render(<MarketingAnalytics />);
+  it("holds GTM and GA4 until analytics consent is granted on public routes", async () => {
+    const { getByTestId, queryByTestId } = render(<MarketingAnalytics />);
 
-    expect(document.querySelector("#google-tag-manager")).not.toBeInTheDocument();
+    expect(queryByTestId("google-tag-manager")).not.toBeInTheDocument();
+    expect(queryByTestId("google-analytics")).not.toBeInTheDocument();
+    expect(queryByTestId("google-analytics-init")).not.toBeInTheDocument();
     expect(getByTestId("web-vitals")).toBeInTheDocument();
 
     act(() => writeAnalyticsConsent("granted"));
-    await waitFor(() => expect(getByTestId("google-tag-manager")).toBeInTheDocument());
+    await waitFor(() => {
+      expect(getByTestId("google-tag-manager")).toBeInTheDocument();
+      expect(getByTestId("google-analytics")).toBeInTheDocument();
+      expect(getByTestId("google-analytics-init")).toBeInTheDocument();
+    });
   });
 
   it("queues denied defaults before consent updates", async () => {

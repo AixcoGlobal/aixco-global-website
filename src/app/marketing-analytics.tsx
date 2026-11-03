@@ -12,6 +12,7 @@ import { isAnalyticsExcludedPath } from "@/lib/analytics/routes";
 import { WebVitals } from "./web-vitals";
 
 const googleTagManagerId = "GTM-KCZJW8NN";
+export const googleAnalyticsMeasurementId = "G-21RTG6TMKH";
 type GoogleConsentStatus = "granted" | "denied";
 type GoogleConsentValues = {
   analytics_storage: GoogleConsentStatus;
@@ -130,6 +131,20 @@ export function MarketingAnalytics() {
   const excludedRoute = isAnalyticsExcludedPath(pathname);
   const googleAnalyticsAllowed = useGoogleAnalyticsConsent(excludedRoute);
 
+  useEffect(() => {
+    if (!googleAnalyticsAllowed || excludedRoute) return;
+    if (
+      typeof window !== "undefined" &&
+      typeof (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag === "function"
+    ) {
+      (window as unknown as { gtag: (...args: unknown[]) => void }).gtag("event", "page_view", {
+        page_path: pathname,
+        page_location: window.location.href,
+        page_title: typeof document !== "undefined" ? document.title : "",
+      });
+    }
+  }, [pathname, googleAnalyticsAllowed, excludedRoute]);
+
   if (excludedRoute) return null;
 
   return (
@@ -137,14 +152,32 @@ export function MarketingAnalytics() {
       {/* Next.js already defers lazyOnload scripts until browser idle. The inline
           route check prevents a queued load after an SPA navigation into a
           private or non-page route. */}
-      {googleAnalyticsAllowed && <Script id="google-tag-manager" strategy="lazyOnload">
-        {`(function(w,d,s,l,i){function load(){if(/^\\/(?:admin|api|portal)(?:\\/|$)/.test(w.location.pathname))return;if(w.__aixcoGtmLoaded)return;w.__aixcoGtmLoaded=true;w[l]=w[l]||[];w[l].push({'gtm.start':
+      {googleAnalyticsAllowed && (
+        <>
+          <Script id="google-tag-manager" strategy="lazyOnload">
+            {`(function(w,d,s,l,i){function load(){if(/^\\/(?:admin|api|portal)(?:\\/|$)/.test(w.location.pathname))return;if(w.__aixcoGtmLoaded)return;w.__aixcoGtmLoaded=true;w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
 j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);}
 load();
 })(window,document,'script','dataLayer','${googleTagManagerId}');`}
-      </Script>}
+          </Script>
+          <Script
+            id="google-analytics"
+            strategy="lazyOnload"
+            src={`https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsMeasurementId}`}
+          />
+          <Script id="google-analytics-init" strategy="lazyOnload">
+            {`window.dataLayer = window.dataLayer || [];
+if(typeof window.gtag!=='function'){window.gtag=function(){window.dataLayer.push(arguments);};}
+window.gtag('js', new Date());
+window.gtag('config', '${googleAnalyticsMeasurementId}', {
+  page_path: window.location.pathname,
+  send_page_view: true
+});`}
+          </Script>
+        </>
+      )}
       <WebVitals />
     </>
   );
