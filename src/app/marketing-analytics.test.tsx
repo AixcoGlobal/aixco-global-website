@@ -50,12 +50,12 @@ describe("route-aware marketing analytics", () => {
     expect(analyticsCookieDomains("127.0.0.1")).toEqual(["127.0.0.1", ".127.0.0.1"]);
   });
 
-  it("holds GTM and GA4 until analytics consent is granted on public routes", async () => {
+  it("holds GTM until analytics consent is granted on public routes while mounting GA4 with consent defaults", async () => {
     const { getByTestId, queryByTestId } = render(<MarketingAnalytics />);
 
     expect(queryByTestId("google-tag-manager")).not.toBeInTheDocument();
-    expect(queryByTestId("google-analytics")).not.toBeInTheDocument();
-    expect(queryByTestId("google-analytics-init")).not.toBeInTheDocument();
+    expect(getByTestId("google-analytics")).toBeInTheDocument();
+    expect(getByTestId("google-analytics-init")).toBeInTheDocument();
     expect(getByTestId("web-vitals")).toBeInTheDocument();
 
     act(() => writeAnalyticsConsent("granted"));

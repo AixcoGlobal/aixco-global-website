@@ -132,7 +132,7 @@ export function MarketingAnalytics() {
   const googleAnalyticsAllowed = useGoogleAnalyticsConsent(excludedRoute);
 
   useEffect(() => {
-    if (!googleAnalyticsAllowed || excludedRoute) return;
+    if (excludedRoute) return;
     if (
       typeof window !== "undefined" &&
       typeof (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag === "function"
@@ -143,40 +143,45 @@ export function MarketingAnalytics() {
         page_title: typeof document !== "undefined" ? document.title : "",
       });
     }
-  }, [pathname, googleAnalyticsAllowed, excludedRoute]);
+  }, [pathname, excludedRoute]);
 
   if (excludedRoute) return null;
 
   return (
     <>
+      <Script
+        id="google-analytics"
+        strategy="afterInteractive"
+        src={`https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsMeasurementId}`}
+      />
+      <Script id="google-analytics-init" strategy="afterInteractive">
+        {`window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('consent', 'default', {
+  'analytics_storage': 'denied',
+  'ad_storage': 'denied',
+  'ad_user_data': 'denied',
+  'ad_personalization': 'denied'
+});
+gtag('js', new Date());
+gtag('config', '${googleAnalyticsMeasurementId}', {
+  page_path: window.location.pathname,
+  send_page_view: true
+});`}
+      </Script>
+
       {/* Next.js already defers lazyOnload scripts until browser idle. The inline
           route check prevents a queued load after an SPA navigation into a
           private or non-page route. */}
       {googleAnalyticsAllowed && (
-        <>
-          <Script id="google-tag-manager" strategy="lazyOnload">
-            {`(function(w,d,s,l,i){function load(){if(/^\\/(?:admin|api|portal)(?:\\/|$)/.test(w.location.pathname))return;if(w.__aixcoGtmLoaded)return;w.__aixcoGtmLoaded=true;w[l]=w[l]||[];w[l].push({'gtm.start':
+        <Script id="google-tag-manager" strategy="lazyOnload">
+          {`(function(w,d,s,l,i){function load(){if(/^\\/(?:admin|api|portal)(?:\\/|$)/.test(w.location.pathname))return;if(w.__aixcoGtmLoaded)return;w.__aixcoGtmLoaded=true;w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
 j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);}
 load();
 })(window,document,'script','dataLayer','${googleTagManagerId}');`}
-          </Script>
-          <Script
-            id="google-analytics"
-            strategy="lazyOnload"
-            src={`https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsMeasurementId}`}
-          />
-          <Script id="google-analytics-init" strategy="lazyOnload">
-            {`window.dataLayer = window.dataLayer || [];
-if(typeof window.gtag!=='function'){window.gtag=function(){window.dataLayer.push(arguments);};}
-window.gtag('js', new Date());
-window.gtag('config', '${googleAnalyticsMeasurementId}', {
-  page_path: window.location.pathname,
-  send_page_view: true
-});`}
-          </Script>
-        </>
+        </Script>
       )}
       <WebVitals />
     </>
