@@ -2,6 +2,66 @@ export { languageOptions } from "./languages";
 export type { Lang } from "./languages";
 
 export const textTranslations = {
+  "Registration Received": {
+    de: "Registrierung erhalten",
+    pl: "Rejestracja przyjęta",
+    sl: "Registracija prejeta",
+    ru: "Регистрация получена",
+  },
+  "Access Request Received": {
+    de: "Zugangsanfrage erhalten",
+    pl: "Wniosek o dostęp przyjęty",
+    sl: "Zahteva za dostop prejeta",
+    ru: "Запрос на доступ получен",
+  },
+  "Your details have been received by the AIXCO team. A representative will follow up directly.": {
+    de: "Ihre Angaben wurden vom AIXCO-Team empfangen. Ein Mitarbeiter wird sich direkt mit Ihnen in Verbindung setzen.",
+    pl: "Twoje dane zostały odebrane przez zespół AIXCO. Przedstawiciel skontaktuje się bezpośrednio.",
+    sl: "Vaše podatke je prejelo osebje AIXCO. Predstavnik vas bo kontaktiral neposredno.",
+    ru: "Ваши данные получены командой AIXCO. Представитель свяжется с вами напрямую.",
+  },
+  "Back to all roles": {
+    de: "Zurück zu allen Rollen",
+    pl: "Powrót do wszystkich ról",
+    sl: "Nazaj na vse vloge",
+    ru: "Назад ко всем ролям",
+  },
+  "Phone": {
+    de: "Telefon",
+    pl: "Telefon",
+    sl: "Telefon",
+    ru: "Телефон",
+  },
+  "Message / Notes": {
+    de: "Nachricht / Notizen",
+    pl: "Wiadomość / Notatki",
+    sl: "Sporočilo / Opombe",
+    ru: "Сообщение / Примечания",
+  },
+  "Describe your interest or investment requirements...": {
+    de: "Beschreiben Sie Ihr Interesse oder Ihre Investitionsanforderungen...",
+    pl: "Opisz swoje zainteresowanie lub wymagania inwestycyjne...",
+    sl: "Opišite svoje zanimanje ali naložbene zahteve...",
+    ru: "Опишите ваш интерес или инвестиционные требования...",
+  },
+  "Enter your account or portal inquiry...": {
+    de: "Geben Sie Ihre Konto- oder Portalanfrage ein...",
+    pl: "Wprowadź zapytanie dotyczące konta lub portalu...",
+    sl: "Vnesite povpraševanje o računu ali portalu...",
+    ru: "Введите ваш запрос по аккаунту или порталу...",
+  },
+  "Submit Registration": {
+    de: "Registrierung absenden",
+    pl: "Prześlij rejestrację",
+    sl: "Pošlji registracijo",
+    ru: "Отправить регистрацию",
+  },
+  "Submit Access Request": {
+    de: "Zugangsanfrage absenden",
+    pl: "Prześlij wniosek o dostęp",
+    sl: "Pošlji zahtevo za dostop",
+    ru: "Отправить запрос на доступ",
+  },
   "Home": {
     "de": "Startseite",
     "ru": "Главная",
