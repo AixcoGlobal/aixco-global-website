@@ -936,29 +936,242 @@ function AccessModal({ mode, tx, lang }: { mode: "login" | "register"; tx: (text
     return [{ ...role, portalUrl, url }];
   });
 
+  const [selectedRoleKey, setSelectedRoleKey] = useState<PortalLoginRole | null>(null);
+  const [submitted, setSubmitted] = useState(false);
+  const [requestReference, setRequestReference] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [phoneCountry, setPhoneCountry] = useState<CountryCode>(() => getPhoneCountryFallback(lang));
+  const phoneCountryEditedRef = useRef(false);
+  const formStartedAtRef = useRef(Date.now());
+  const phoneCountries = useMemo(() => getPhoneCountryOptions(lang), [lang]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || process.env.NODE_ENV === "test") return;
+    const controller = new AbortController();
+    void fetch("/api/location/country", {
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((payload: unknown) => {
+        const country = toSupportedPhoneCountry(
+          payload && typeof payload === "object" && "country" in payload
+            ? String((payload as { country?: unknown }).country ?? "")
+            : null,
+        );
+        if (country && !phoneCountryEditedRef.current) setPhoneCountry(country);
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, []);
+
+  const activeRole = roles.find((r) => r.portalRole === selectedRoleKey) ?? null;
+
+  const handleSelectRole = (role: (typeof roles)[number], actionName: string) => {
+    setSelectedRoleKey(role.portalRole);
+    setSubmitError(null);
+    void recordPortalEvent({
+      mode,
+      roleTitle: role.title,
+      action: actionName,
+      portalUrl: role.portalUrl,
+    });
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isSubmitting) return;
+
+    const form = new FormData(event.currentTarget);
+    const name = String(form.get("name") ?? "").trim();
+    const email = String(form.get("email") ?? "").trim();
+    const phone = composeInternationalPhone(
+      toSupportedPhoneCountry(String(form.get("phoneCountry") ?? "")) ?? phoneCountry,
+      String(form.get("phoneNational") ?? ""),
+    );
+    const message = String(form.get("message") ?? "").trim();
+    const website = String(form.get("website") ?? "").trim();
+
+    setSubmitError(null);
+    if (!isValidInternationalPhone(phone)) {
+      setSubmitError(tx("Please enter a valid phone number for the selected country."));
+      return;
+    }
+
+    setIsSubmitting(true);
+    const roleTitle = activeRole?.title ?? (isRegister ? "Registration" : "Portal Access");
+    const payload = {
+      name,
+      email,
+      interest: `${roleTitle} ${isRegister ? "Registration" : "Portal Access"}`,
+      message: message
+        ? `${message} (Role: ${roleTitle})`
+        : `${isRegister ? "Registration" : "Portal access"} request for ${roleTitle}. Phone: ${phone}`,
+      requestType: "message" as const,
+      phone,
+    };
+
+    const result = await recordContactSubmission(payload, {
+      antiAbuse: { website, startedAt: formStartedAtRef.current },
+      locale: lang,
+    });
+    setIsSubmitting(false);
+
+    if (result.ok) {
+      setRequestReference(result.reference ?? null);
+      setSubmitted(true);
+      return;
+    }
+
+    setSubmitError(tx(getContactSubmitErrorMessage(result.reason)));
+  };
+
+  if (submitted) {
+    return (
+      <div className="contact-request-modal max-w-2xl" role="status" aria-live="polite" aria-atomic="true">
+        <p className="eyebrow mb-3">{tx(isRegister ? "Registration Received" : "Access Request Received")}</p>
+        <h3 className="heading-section">{tx("Thank you. We will contact you shortly.")}</h3>
+        <p className="story-body mt-4 text-foreground/70">
+          {tx("Your details have been received by the AIXCO team. A representative will follow up directly.")}
+        </p>
+        {requestReference && (
+          <p className="mt-4 text-sm font-semibold text-foreground">
+            {tx("Request reference")}: <span className="font-mono">{requestReference}</span>
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (activeRole) {
+    return (
+      <div className="contact-request-modal w-full max-w-2xl">
+        <button
+          type="button"
+          onClick={() => setSelectedRoleKey(null)}
+          className="mb-4 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+        >
+          ← {tx("Back to all roles")}
+        </button>
+        <p className="eyebrow mb-2">{tx(isRegister ? "Register with AIXCO" : "Login to your AIXCO portal")}</p>
+        <h3 className="heading-section mb-2">{tx(activeRole.title)}</h3>
+        <p className="mb-4 text-sm leading-relaxed text-muted-foreground">{tx(activeRole.description)}</p>
+
+        <div className="mb-6 flex flex-wrap gap-2">
+          {roles.map((role) => (
+            <button
+              key={role.portalRole}
+              type="button"
+              onClick={() => handleSelectRole(role, role.action)}
+              className={`rounded-md px-3 py-1.5 text-xs transition-colors cursor-pointer ${
+                role.portalRole === activeRole.portalRole
+                  ? "bg-primary text-primary-foreground font-semibold"
+                  : "bg-surface border border-border/80 text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {tx(role.title)}
+            </button>
+          ))}
+        </div>
+
+        <form onSubmit={handleSubmit} className="contact-request-form grid gap-4">
+          <div aria-hidden="true" className="pointer-events-none absolute start-[-10000px] top-auto h-px w-px overflow-hidden">
+            <label>
+              Website
+              <input name="website" type="text" tabIndex={-1} autoComplete="off" />
+            </label>
+          </div>
+
+          <label className="grid gap-2">
+            <span className="story-metric-label text-foreground/60">{tx("Name & Surname")}</span>
+            <input
+              name="name"
+              type="text"
+              required
+              className="w-full rounded-md border border-border/80 bg-background/80 px-3 py-2 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+            />
+          </label>
+
+          <label className="grid gap-2">
+            <span className="story-metric-label text-foreground/60">{tx("Email")}</span>
+            <input
+              name="email"
+              type="email"
+              required
+              className="w-full rounded-md border border-border/80 bg-background/80 px-3 py-2 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+            />
+          </label>
+
+          <label className="grid gap-2">
+            <span className="story-metric-label text-foreground/60">{tx("Phone")}</span>
+            <div className="grid grid-cols-[minmax(0,10.5rem)_minmax(0,1fr)] gap-2">
+              <select
+                name="phoneCountry"
+                value={phoneCountry}
+                onChange={(e) => {
+                  phoneCountryEditedRef.current = true;
+                  setPhoneCountry(e.target.value as CountryCode);
+                }}
+                className="w-full rounded-md border border-border/80 bg-background/80 px-2 py-2 text-xs text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+              >
+                {phoneCountries.map((c) => (
+                  <option key={c.country} value={c.country}>
+                    {c.label} (+{c.callingCode})
+                  </option>
+                ))}
+              </select>
+              <input
+                name="phoneNational"
+                type="tel"
+                required
+                placeholder={tx("Phone number")}
+                className="w-full rounded-md border border-border/80 bg-background/80 px-3 py-2 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+              />
+            </div>
+          </label>
+
+          <label className="grid gap-2">
+            <span className="story-metric-label text-foreground/60">{tx("Message / Notes")}</span>
+            <textarea
+              name="message"
+              rows={3}
+              placeholder={tx(isRegister ? "Describe your interest or investment requirements..." : "Enter your account or portal inquiry...")}
+              className="w-full rounded-md border border-border/80 bg-background/80 px-3 py-2 text-sm text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+            />
+          </label>
+
+          {submitError && (
+            <p className="text-sm text-destructive" role="alert">{submitError}</p>
+          )}
+
+          <div className="flex flex-wrap items-center gap-3 pt-2">
+            <button type="submit" disabled={isSubmitting} className="btn-gold cursor-pointer">
+              {tx(isSubmitting ? "Sending..." : isRegister ? "Submit Registration" : "Submit Access Request")}
+            </button>
+            <button type="button" onClick={() => setSelectedRoleKey(null)} className="btn-ghost-gold cursor-pointer">
+              {tx("Back to all roles")}
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div>
       <h3 className="heading-section mb-3">{tx(title)}</h3>
       <p className="mb-6 text-sm leading-relaxed text-muted-foreground">{tx(subtitle)}</p>
       <div className="mb-6 flex flex-wrap gap-3">
         {roles.map((role) => (
-          <a
+          <button
             key={role.action}
-            href={role.url}
-            target="_blank"
-            rel="noreferrer"
-            onClick={() => {
-              void recordPortalEvent({
-                mode,
-                roleTitle: role.title,
-                action: role.action,
-                portalUrl: role.portalUrl,
-              });
-            }}
-            className="btn-ghost-gold !py-2 !px-4 text-[12px]"
+            type="button"
+            onClick={() => handleSelectRole(role, role.action)}
+            className="btn-ghost-gold !py-2 !px-4 text-[12px] cursor-pointer"
           >
             {tx(role.action)}
-          </a>
+          </button>
         ))}
       </div>
       <div className="grid gap-4 md:grid-cols-3">
@@ -971,22 +1184,13 @@ function AccessModal({ mode, tx, lang }: { mode: "login" | "register"; tx: (text
                 <li key={point} className="text-sm leading-relaxed text-muted-foreground">{tx(point)}</li>
               ))}
             </ul>
-            <a
-              href={role.url}
-              target="_blank"
-              rel="noreferrer"
-              onClick={() => {
-                void recordPortalEvent({
-                  mode,
-                  roleTitle: role.title,
-                  action: role.cta,
-                  portalUrl: role.portalUrl,
-                });
-              }}
-              className="mt-5 inline-flex min-h-11 items-center py-2 text-xs uppercase tracking-widest text-primary-text"
+            <button
+              type="button"
+              onClick={() => handleSelectRole(role, role.cta)}
+              className="mt-5 inline-flex min-h-11 items-center py-2 text-xs uppercase tracking-widest text-primary-text hover:text-primary transition-colors cursor-pointer"
             >
               {tx(role.cta)}
-            </a>
+            </button>
           </div>
         ))}
       </div>

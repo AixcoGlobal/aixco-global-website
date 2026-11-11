@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { I18nProvider } from "@/i18n/I18nProvider";
+import { I18nProvider, hasTextTranslation } from "@/i18n/I18nProvider";
 import { SiteContentContext } from "@/data/site-content-context";
 import { siteContentDefaults } from "@/lib/backend/site-content";
 import { recordContactSubmission, recordPortalEvent } from "@/lib/backend/lead-capture";
@@ -101,6 +101,7 @@ describe("Modals", () => {
 
   it("renders the complete registration flow in Polish without English fallbacks", async () => {
     window.localStorage.setItem("aixco-lang", "pl");
+    await hasTextTranslation("Register with AIXCO", "pl");
 
     render(
       <I18nProvider>
@@ -113,17 +114,13 @@ describe("Modals", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /open register/i }));
 
-    expect(await screen.findByRole("dialog", { name: "Zarejestruj się w AIXCO" })).toBeInTheDocument();
+    expect(await screen.findByRole("dialog", { name: "Zarejestruj się w AIXCO" }, { timeout: 3000 })).toBeInTheDocument();
     expect(screen.getByText("Dlaczego warto zostać klientem?")).toBeInTheDocument();
     expect(screen.getByText("Dlaczego warto zostać brokerem?")).toBeInTheDocument();
     expect(screen.getByText("Dlaczego warto zostać partnerem deweloperskim?")).toBeInTheDocument();
-    expect(screen.getByText("Rozpocznij rejestrację klienta")).toBeInTheDocument();
-    expect(screen.getByText("Rozpocznij rejestrację brokera")).toBeInTheDocument();
-    expect(screen.getByText("Rozpocznij wdrożenie dewelopera")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Rozpocznij rejestrację klienta" })).toHaveAttribute(
-      "href",
-      "https://workw.com/realestate/aixco/customer-signup?lang=pl",
-    );
+    expect(screen.getByRole("button", { name: "Rozpocznij rejestrację klienta" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Rozpocznij rejestrację brokera" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Rozpocznij wdrożenie dewelopera" })).toBeInTheDocument();
 
     const dialog = screen.getByRole("dialog");
     expect(dialog).not.toHaveTextContent("Register with AIXCO");
@@ -131,7 +128,7 @@ describe("Modals", () => {
     expect(dialog).not.toHaveTextContent("Start customer registration");
   });
 
-  it("opens the English role-specific signup routes instead of the German portal root", async () => {
+  it("renders registration action buttons that open the onboarding form instead of redirecting", async () => {
     render(
       <I18nProvider>
         <UIProvider>
@@ -143,21 +140,16 @@ describe("Modals", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /open register/i }));
 
-    expect(await screen.findByRole("link", { name: "Start customer registration" })).toHaveAttribute(
-      "href",
-      "https://workw.com/realestate/aixco/customer-signup?lang=en",
-    );
-    expect(screen.getByRole("link", { name: "Start broker registration" })).toHaveAttribute(
-      "href",
-      "https://workw.com/realestate/aixco/broker-signup?lang=en",
-    );
-    expect(screen.getByRole("link", { name: "Start developer onboarding" })).toHaveAttribute(
-      "href",
-      "https://workw.com/realestate/aixco/developer-signup?lang=en",
-    );
+    const customerBtn = await screen.findByRole("button", { name: "Start customer registration" });
+    expect(customerBtn).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start broker registration" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start developer onboarding" })).toBeInTheDocument();
+
+    fireEvent.click(customerBtn);
+    expect(screen.getByPlaceholderText(/Describe your interest or investment requirements/i)).toBeInTheDocument();
   });
 
-  it("opens the English role-specific login routes instead of the German portal root", async () => {
+  it("renders login action buttons that open the portal access form instead of redirecting", async () => {
     render(
       <I18nProvider>
         <UIProvider>
@@ -169,21 +161,16 @@ describe("Modals", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /open login/i }));
 
-    expect(await screen.findByRole("link", { name: "Customer Login" })).toHaveAttribute(
-      "href",
-      "https://workw.com/realestate/aixco/customer-login?lang=en",
-    );
-    expect(screen.getByRole("link", { name: "Broker Login" })).toHaveAttribute(
-      "href",
-      "https://workw.com/realestate/aixco/broker-login?lang=en",
-    );
-    expect(screen.getByRole("link", { name: "Developer Login" })).toHaveAttribute(
-      "href",
-      "https://workw.com/realestate/aixco/developer-login?lang=en",
-    );
+    const customerLoginBtn = await screen.findByRole("button", { name: "Customer Login" });
+    expect(customerLoginBtn).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Broker Login" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Developer Login" })).toBeInTheDocument();
+
+    fireEvent.click(customerLoginBtn);
+    expect(screen.getByPlaceholderText(/Enter your account or portal inquiry/i)).toBeInTheDocument();
   });
 
-  it("records login clicks against the approved portal root after opening the Workwise route", async () => {
+  it("records login clicks against the approved portal root and opens the access form", async () => {
     render(
       <I18nProvider>
         <UIProvider>
@@ -194,7 +181,7 @@ describe("Modals", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: /open login/i }));
-    fireEvent.click(await screen.findByRole("link", { name: "Customer Login" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Customer Login" }));
 
     expect(vi.mocked(recordPortalEvent)).toHaveBeenCalledWith({
       mode: "login",
@@ -202,6 +189,7 @@ describe("Modals", () => {
       action: "Customer Login",
       portalUrl: "https://customer.aixco.global/",
     });
+    expect(screen.getByPlaceholderText(/Enter your account or portal inquiry/i)).toBeInTheDocument();
   });
 
   it("gives legal dialogs an accessible name", () => {
@@ -386,7 +374,7 @@ describe("Modals", () => {
     expect(document.body.style.overflow).toBe("clip");
   });
 
-  it("does not render portal links outside the approved AIXCO role portals", () => {
+  it("does not render portal action buttons outside the approved AIXCO role portals", () => {
     render(
       <I18nProvider>
         <SiteContentContext.Provider
@@ -411,11 +399,8 @@ describe("Modals", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /open login/i }));
 
-    expect(screen.queryByRole("link", { name: "Customer Login" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Broker Login" })).toHaveAttribute(
-      "href",
-      "https://workw.com/realestate/aixco/broker-login?lang=en",
-    );
+    expect(screen.queryByRole("button", { name: "Customer Login" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Broker Login" })).toBeInTheDocument();
   });
 
   it("opens the contact request modal with call and email choices", () => {
