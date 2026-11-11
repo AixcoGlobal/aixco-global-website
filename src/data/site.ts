@@ -261,21 +261,6 @@ export const partners = [
     ],
   },
   {
-    name: "Workwise",
-    group: "Group companies",
-    modalLabel: "Group company",
-    logo: "workwise",
-    summary: "Enterprise SaaS and fintech operating platform.",
-    detail: [
-      "Workwise is described as a next-generation enterprise SaaS and fintech platform built to unify communication, HR, finance, project management, approvals, documents, and digital lending in one ecosystem.",
-      "The uploaded materials say the platform is designed to eliminate fragmented systems, reduce costs, improve productivity, and support localized enterprise requirements.",
-    ],
-    facts: [
-      { title: "Core modules", text: "Communication, approvals, finance, document tools, HR, projects, and fintech workflows." },
-      { title: "Market angle", text: "Built for underserved SMEs and enterprise users, with a stated path to high recurring revenue at scale." },
-    ],
-  },
-  {
     name: "Clean Elements",
     group: "Group companies",
     modalLabel: "Group company",

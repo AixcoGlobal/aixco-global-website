@@ -40,7 +40,6 @@ const teamImageMap: Record<string, string> = {
 const partnerLogoMap: Record<string, string> = {
   globalPartners: aixcoLiveLogos.globalPartners,
   isp: aixcoLiveLogos.isp,
-  workwise: aixcoLiveLogos.workwise,
   cleanElements: aixcoLiveLogos.cleanElements,
   revanta: aixcoLiveLogos.revanta,
   gti: aixcoLiveLogos.gti,

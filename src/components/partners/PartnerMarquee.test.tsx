@@ -4,11 +4,11 @@ import { PartnerMarquee } from "./PartnerMarquee";
 
 const partners = [
   {
-    name: "Workwise",
+    name: "ISP Group",
     group: "Group companies",
     modalLabel: "Group company",
-    logo: "workwise",
-    summary: "Enterprise SaaS and fintech operating platform.",
+    logo: "isp",
+    summary: "Diversified services and operating business.",
     detail: [],
   },
 ];
@@ -33,7 +33,7 @@ describe("PartnerMarquee", () => {
 
     expect(container.querySelectorAll(".partner-marquee-item__fallback")).toHaveLength(2);
     expect(container.querySelector(".partner-marquee-item__fallback")).toHaveAttribute("data-logo-state", "pending");
-    expect(screen.getAllByText("Workwise")).toHaveLength(4);
+    expect(screen.getAllByText("ISP Group")).toHaveLength(4);
 
     const firstLogo = logos[0];
     fireEvent.load(firstLogo);
